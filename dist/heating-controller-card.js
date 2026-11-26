@@ -858,19 +858,26 @@ function buildView(hass, config) {
 * It renders from the entity states only. Anything the entities do not carry is left out; the card
 * never guesses and never throws because something is missing.
 */
+/**
+* The palette, with the Material value as a fallback.
+*
+* Home Assistant does not define every `--rgb-*` variable in every theme (grey is missing from
+* the default one), and an undefined variable in `rgba()` invalidates the whole declaration,
+* which would paint nothing at all. The fallback keeps the card drawn.
+*/
 var COLORS = {
-	grey: "--rgb-grey-color",
-	orange: "--rgb-orange-color",
-	amber: "--rgb-amber-color",
-	green: "--rgb-green-color",
-	red: "--rgb-red-color",
-	blue: "--rgb-blue-color",
-	purple: "--rgb-purple-color",
-	teal: "--rgb-teal-color",
-	primary: "--rgb-primary-color"
+	grey: ["--rgb-grey-color", "158, 158, 158"],
+	orange: ["--rgb-orange-color", "255, 152, 0"],
+	amber: ["--rgb-amber-color", "255, 193, 7"],
+	green: ["--rgb-green-color", "76, 175, 80"],
+	red: ["--rgb-red-color", "244, 67, 54"],
+	blue: ["--rgb-blue-color", "33, 150, 243"],
+	purple: ["--rgb-purple-color", "156, 39, 176"],
+	teal: ["--rgb-teal-color", "0, 150, 136"],
+	primary: ["--rgb-primary-color", "3, 169, 244"]
 };
-/** A theme colour as a CSS value. */
-var color = (name) => `var(${COLORS[name]})`;
+/** A theme colour as a CSS value, with its fallback. */
+var color = (name) => `var(${COLORS[name][0]}, ${COLORS[name][1]})`;
 var ROOM_STATUS = {
 	served: {
 		icon: "radiator",
@@ -1185,7 +1192,7 @@ var HeatingControllerCard = class extends i {
       height: 10px;
       margin-bottom: 20px;
       border-radius: 5px;
-      background: rgba(var(--rgb-grey-color), 0.18);
+      background: rgba(var(--rgb-grey-color, 158, 158, 158), 0.18);
     }
 
     .bar-fill {
@@ -1196,15 +1203,15 @@ var HeatingControllerCard = class extends i {
     }
 
     .bar-fill.high {
-      background: rgb(var(--rgb-orange-color));
+      background: rgb(var(--rgb-orange-color, 255, 152, 0));
     }
 
     .bar-fill.low {
-      background: rgb(var(--rgb-amber-color));
+      background: rgb(var(--rgb-amber-color, 255, 193, 7));
     }
 
     .bar-fill.none {
-      background: rgba(var(--rgb-grey-color), 0.55);
+      background: rgba(var(--rgb-grey-color, 158, 158, 158), 0.55);
     }
 
     .tick {
@@ -1213,7 +1220,7 @@ var HeatingControllerCard = class extends i {
       bottom: -4px;
       width: 2px;
       border-radius: 2px;
-      background: rgba(var(--rgb-grey-color), 0.55);
+      background: rgba(var(--rgb-grey-color, 158, 158, 158), 0.55);
     }
 
     .tick-label {
@@ -1230,7 +1237,7 @@ var HeatingControllerCard = class extends i {
       height: 8px;
       overflow: hidden;
       border-radius: 4px;
-      background: rgba(var(--rgb-grey-color), 0.16);
+      background: rgba(var(--rgb-grey-color, 158, 158, 158), 0.16);
     }
 
     .output-stack i {
@@ -1317,7 +1324,7 @@ var HeatingControllerCard = class extends i {
     }
 
     .room-valve.open {
-      color: rgb(var(--rgb-orange-color));
+      color: rgb(var(--rgb-orange-color, 255, 152, 0));
     }
 
     .room-sub {
@@ -1354,8 +1361,8 @@ var HeatingControllerCard = class extends i {
       flex: none;
       padding: 1px 5px;
       border-radius: 4px;
-      background: rgba(var(--rgb-purple-color), 0.14);
-      color: rgb(var(--rgb-purple-color));
+      background: rgba(var(--rgb-purple-color, 156, 39, 176), 0.14);
+      color: rgb(var(--rgb-purple-color, 156, 39, 176));
       font-size: 0.62rem;
       font-weight: 500;
     }
@@ -1434,12 +1441,12 @@ var HeatingControllerCard = class extends i {
     }
 
     .btn:hover {
-      background: rgba(var(--rgb-primary-color), 0.12);
+      background: rgba(var(--rgb-primary-color, 3, 169, 244), 0.12);
     }
 
     .btn.is-on {
-      background: rgba(var(--rgb-orange-color), 0.18);
-      color: rgb(var(--rgb-orange-color));
+      background: rgba(var(--rgb-orange-color, 255, 152, 0), 0.18);
+      color: rgb(var(--rgb-orange-color, 255, 152, 0));
     }
 
     .btn:disabled {
