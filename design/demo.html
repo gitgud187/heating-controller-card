@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>heating-controller-card · demo</title>
+<!--
+  Development harness: renders the built bundle (dist/heating-controller-card.js) against a fake
+  Home Assistant, so the card can be looked at without installing it. Fake data only.
+-->
+<style>
+  :root { --font: "Roboto", "Helvetica Neue", system-ui, -apple-system, sans-serif; }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: #e9edf2; color: #212121; font-family: var(--font); min-height: 100vh; }
+  body[data-theme="dark"] { background: #0b0e12; }
+
+  .toolbar {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px;
+    padding: 10px 16px; border-bottom: 1px solid rgba(0,0,0,.08);
+    background: rgba(255,255,255,.86); backdrop-filter: blur(10px);
+    font-size: .74rem; font-weight: 500; color: #45505c;
+  }
+  body[data-theme="dark"] .toolbar { background: rgba(16,20,25,.86); border-color: rgba(255,255,255,.08); color: #9aa5b1; }
+  .toolbar label { display: inline-flex; align-items: center; gap: 6px; }
+  .toolbar select {
+    font: inherit; padding: 4px 6px; border-radius: 6px;
+    border: 1px solid rgba(0,0,0,.14); background: transparent; color: inherit;
+  }
+  body[data-theme="dark"] .toolbar select { border-color: rgba(255,255,255,.16); }
+  .toolbar .spacer { flex: 1 1 auto; }
+  .toolbar .hint { font-weight: 400; opacity: .75; }
+
+  .stage {
+    color: var(--primary-text-color);
+    width: min(100% - 32px, 420px);
+    margin: 24px auto 56px;
+
+    --primary-text-color: #212121;
+    --secondary-text-color: #727272;
+    --divider-color: rgba(0, 0, 0, .08);
+    --ha-card-background: #ffffff;
+    --ha-card-border-radius: 12px;
+    --ha-card-border-width: 1px;
+    --ha-card-border-color: rgba(0, 0, 0, .06);
+    --ha-card-box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
+    --secondary-background-color: rgba(0, 0, 0, .05);
+    --rgb-primary-color: 3, 169, 244;
+    --rgb-red-color: 244, 67, 54;
+    --rgb-orange-color: 255, 152, 0;
+    --rgb-amber-color: 255, 193, 7;
+    --rgb-green-color: 76, 175, 80;
+    --rgb-blue-color: 33, 150, 243;
+    --rgb-purple-color: 156, 39, 176;
+    --rgb-teal-color: 0, 150, 136;
+    --rgb-grey-color: 158, 158, 158;
+  }
+  .stage[data-theme="dark"] {
+    --primary-text-color: #e4e4e4;
+    --secondary-text-color: #9a9a9a;
+    --divider-color: rgba(255, 255, 255, .09);
+    --ha-card-background: #1c1c1c;
+    --ha-card-border-color: rgba(255, 255, 255, .06);
+    --ha-card-box-shadow: 0 1px 3px rgba(0, 0, 0, .45);
+    --secondary-background-color: rgba(255, 255, 255, .07);
+  }
+
+
+  .mock-note { margin: 14px 4px 0; font-size: .72rem; line-height: 1.55; color: #6b7785; }
+  body[data-theme="dark"] .mock-note { color: #66717d; }
+</style>
+</head>
+<body data-theme="light">
+
+<div class="toolbar">
+  <label>State
+    <select id="scenario"></select>
+  </label>
+  <label>Theme
+    <select id="theme">
+      <option value="light">Light</option>
+      <option value="dark">Dark</option>
+    </select>
+  </label>
+  <label>Width
+    <select id="width">
+      <option value="420">Phone 420</option>
+      <option value="720">Desktop 720</option>
+    </select>
+  </label>
+  <span class="spacer"></span>
+  <span class="hint">fake states · built bundle</span>
+</div>
+
+<main class="stage" id="stage" data-theme="light">
+  <div id="card"></div>
+  <p class="mock-note">
+    The built card against a fake <code>hass</code>. Entity ids, rooms and values are made up.
+  </p>
+</main>
+
+<script type="module">
+  import '../dist/heating-controller-card.js';
+
+  /* What Home Assistant's own ha-card provides. It lives in its own shadow root, because a
+     document stylesheet does not reach into the card's shadow DOM. */
+  class HaCardStub extends HTMLElement {
+    constructor() {
+      super();
+      this.attachShadow({ mode: 'open' }).innerHTML = `
+        <style>
+          :host {
+            display: block;
+            background: var(--ha-card-background);
+            border: var(--ha-card-border-width) solid var(--ha-card-border-color);
+            border-radius: var(--ha-card-border-radius);
+            box-shadow: var(--ha-card-box-shadow);
+            color: var(--primary-text-color);
+            font-family: var(--font);
+          }
+        </style>
+        <slot></slot>`;
+    }
+  }
+  if (customElements.get('ha-card') === undefined) {
+    customElements.define('ha-card', HaCardStub);
+  }
+
+  /* ---------------------------------------------------------------- fake hass */
+
+  const LABELS = {
+    on: 'On',
+    off: 'Off',
+    locked_out: 'Locked out',
+    paused: 'Paused',
+    unavailable: 'Unavailable',
+    served: 'Heating',
+    waiting_for_valve: 'Waiting for valve',
+    satisfied: 'Satisfied',
+    blocked: 'Blocked',
+    window_open: 'Window open',
+    thermostat_off: 'Thermostat off',
+    wall_invalid: 'Wall sensor invalid',
+    thermostat_invalid: 'Thermostat invalid',
+    valve_data_missing: 'Valve unavailable',
+    valve_unhealthy: 'Valve misconfigured',
+  };
+
+  function makeHass(scenario) {
+    const states = {};
+    const entities = {};
+    const devices = { controller: { id: 'controller', name: scenario.title ?? 'Heating' } };
+    const areas = {};
+
+    function add(deviceId, key, state, attributes = {}) {
+      const [domain, translationKey] = key.split(':');
+      const entityId = `${domain}.${deviceId}_${translationKey}`;
+      entities[entityId] = {
+        entity_id: entityId,
+        device_id: deviceId,
+        platform: 'heating_controller',
+        translation_key: translationKey,
+      };
+      states[entityId] = { entity_id: entityId, state: String(state), attributes };
+    }
+
+    add('controller', 'sensor:boiler', scenario.boiler ?? 'on', {
+      reason: scenario.reason?.code ?? 'running_load',
+      message: scenario.reason?.message ?? 'running: load 7.2 ≥ 1.5 m²·K',
+    });
+    add('controller', 'sensor:load', scenario.load ?? 0, {
+      start_load_m2k: 4,
+      stop_load_m2k: 1.5,
+    });
+    if (scenario.output != null) {
+      add('controller', 'sensor:modulation', scenario.output);
+      add('controller', 'sensor:base', scenario.base ?? 48);
+      add('controller', 'sensor:proportional', scenario.p ?? 2.8);
+      add('controller', 'sensor:integral', scenario.i ?? 3.2);
+    }
+    add('controller', 'sensor:starts_last_hour', scenario.starts ?? 0);
+    if (scenario.run != null) add('controller', 'sensor:run_time', scenario.run);
+    add(
+      'controller',
+      'sensor:lockout_until',
+      scenario.lockout ?? 'unknown',
+    );
+    add('controller', 'switch:pause', scenario.boiler === 'paused' ? 'on' : 'off');
+    add('controller', 'button:clear_lockout', 'unknown');
+
+    for (const room of scenario.rooms ?? []) {
+      const id = room.id;
+      devices[id] = { id, name: room.name };
+      if (room.status) {
+        add(id, 'sensor:room_status', room.status, {
+          ...(room.current == null ? {} : { current_temperature: room.current }),
+          ...(room.target == null ? {} : { target_temperature: room.target }),
+          ...(room.valve == null ? {} : { valve_position: room.valve }),
+        });
+        add(id, 'sensor:room_load', room.share ?? 0);
+        if (room.error != null) add(id, 'sensor:room_error', room.error);
+        add(id, 'binary_sensor:valve_open', room.valve > 0 || room.open ? 'on' : 'off');
+        add(id, 'binary_sensor:overheating', room.overheat ? 'on' : 'off');
+      }
+    }
+
+    return {
+      states,
+      entities,
+      devices,
+      areas,
+      callService: () => Promise.resolve(),
+      formatEntityState: (stateObj) => LABELS[stateObj.state] ?? stateObj.state,
+    };
+  }
+
+  /* -------------------------------------------------------------- scenarios */
+
+  const ROOMS = {
+    living: { id: 'living', name: 'Living room' },
+    kitchen: { id: 'kitchen', name: 'Kitchen' },
+    bath: { id: 'bath', name: 'Bath' },
+    bedroom: { id: 'bedroom', name: 'Bedroom' },
+    kids: { id: 'kids', name: 'Kids room' },
+    study: { id: 'study', name: 'Study' },
+  };
+
+  const SCENARIOS = {
+    heating: {
+      boiler: 'on',
+      load: 7.2,
+      output: 54,
+      base: 48,
+      p: 2.8,
+      i: 3.2,
+      run: 42,
+      starts: 1,
+      reason: { code: 'running_load', message: 'running: load 7.2 ≥ 1.5 m²·K' },
+      rooms: [
+        { ...ROOMS.living, status: 'served', share: 4.8, error: 0.2, current: 20.8, target: 21, valve: 62 },
+        { ...ROOMS.kitchen, status: 'served', share: 1.8, error: 0.2, current: 21.1, target: 21.3, valve: 30 },
+        { ...ROOMS.bath, status: 'served', share: 0.6, error: 0.1, current: 22.4, target: 22.5, valve: 100 },
+        { ...ROOMS.bedroom, status: 'satisfied', share: 0, current: 19.4, target: 19 },
+        { ...ROOMS.kids, status: 'waiting_for_valve', share: 0, error: 0.8, current: 20.2, target: 21 },
+        { ...ROOMS.study, status: 'window_open', share: 0, current: 21 },
+      ],
+    },
+    minoff: {
+      boiler: 'off',
+      load: 3.3,
+      run: null,
+      starts: 1,
+      reason: { code: 'min_off', message: 'waiting: minimum off 5 min left' },
+      rooms: [
+        { ...ROOMS.living, status: 'served', share: 2.4, error: 0.1, current: 20.9, target: 21, valve: 40 },
+        { ...ROOMS.kitchen, status: 'served', share: 0.9, error: 0.1, current: 21.1, target: 21.2, valve: 12 },
+        { ...ROOMS.bath, status: 'satisfied', share: 0, current: 22.6, target: 22.5 },
+        { ...ROOMS.bedroom, status: 'satisfied', share: 0, current: 19.2, target: 19 },
+        { ...ROOMS.kids, status: 'thermostat_off', share: 0, current: 20.3 },
+        { ...ROOMS.study, status: 'window_open', share: 0, current: 21.2 },
+      ],
+    },
+    lockout: {
+      boiler: 'locked_out',
+      load: 24.5,
+      run: null,
+      starts: 2,
+      lockout: '2026-01-01T14:30:00+00:00',
+      reason: { code: 'lockout', message: 'waiting: locked out until 14:30' },
+      rooms: [
+        { ...ROOMS.bedroom, status: 'served', share: 22.4, error: 1.4, current: 19.6, target: 21, valve: 100 },
+        { ...ROOMS.kids, status: 'served', share: 2.1, error: 0.4, current: 20.6, target: 21, valve: 35 },
+        { ...ROOMS.living, status: 'satisfied', share: 0, current: 21, target: 21 },
+        { ...ROOMS.kitchen, status: 'satisfied', share: 0, current: 21.2, target: 21.1 },
+        { ...ROOMS.bath, status: 'satisfied', share: 0, current: 22.4, target: 22.3 },
+        { ...ROOMS.study, status: 'window_open', share: 0, current: 20.8 },
+      ],
+    },
+    paused: {
+      boiler: 'paused',
+      load: 4.8,
+      run: null,
+      starts: 1,
+      reason: { code: 'paused', message: 'stopped: paused' },
+      rooms: [
+        { ...ROOMS.living, status: 'served', share: 4.8, error: 0.2, current: 20.8, target: 21, valve: 55 },
+        { ...ROOMS.kitchen, status: 'satisfied', share: 0, current: 21.2, target: 21.1 },
+        { ...ROOMS.bath, status: 'satisfied', share: 0, current: 22.3, target: 22.2 },
+        { ...ROOMS.bedroom, status: 'satisfied', share: 0, current: 19.1, target: 19 },
+        { ...ROOMS.kids, status: 'waiting_for_valve', share: 0, error: 0.5, current: 20.5, target: 21 },
+        { ...ROOMS.study, status: 'thermostat_off', share: 0, current: 20.9 },
+      ],
+    },
+    problems: {
+      boiler: 'off',
+      load: 0,
+      run: null,
+      starts: 0,
+      reason: { code: 'idle', message: 'off: no served room needs heat' },
+      rooms: [
+        { ...ROOMS.bedroom, status: 'blocked', share: 0, error: 1.6, current: 19.4, target: 21 },
+        { ...ROOMS.kitchen, status: 'valve_unhealthy', share: 0, current: 21.4, target: 21, valve: 100 },
+        { ...ROOMS.living, status: 'satisfied', share: 0, current: 23, target: 21.5, overheat: true },
+        { ...ROOMS.bath, status: 'satisfied', share: 0, current: 22, target: 22 },
+        { ...ROOMS.study, status: 'wall_invalid', share: 0, target: 20.5 },
+        { ...ROOMS.kids, status: 'thermostat_off', share: 0, current: 20.1 },
+      ],
+    },
+    unavailable: {
+      boiler: 'unavailable',
+      load: 5.1,
+      run: null,
+      starts: 1,
+      reason: { code: 'boiler_unavailable', message: 'off: boiler unavailable, nothing commanded' },
+      rooms: [
+        { ...ROOMS.living, status: 'served', share: 4.8, error: 0.3, current: 20.7, target: 21, valve: 48 },
+        { ...ROOMS.kitchen, status: 'waiting_for_valve', share: 0.3, error: 0.1, current: 21, target: 21.1 },
+        { ...ROOMS.bath, status: 'satisfied', share: 0, current: 22.2, target: 22.1 },
+        { ...ROOMS.bedroom, status: 'satisfied', share: 0, current: 19.3, target: 19 },
+        { ...ROOMS.kids, status: 'satisfied', share: 0, current: 20.9, target: 20.8 },
+        { ...ROOMS.study, status: 'window_open', share: 0, current: 21.1 },
+      ],
+    },
+    norooms: {
+      boiler: 'off',
+      load: 0,
+      run: null,
+      starts: 0,
+      reason: {
+        code: 'all_rooms_excluded',
+        message: 'off: no room has trustworthy data',
+      },
+      rooms: [],
+    },
+    missing: { missing: true },
+  };
+
+  /* ------------------------------------------------------------------ render */
+
+  const stage = document.getElementById('stage');
+  const host = document.getElementById('card');
+  const scenarioSelect = document.getElementById('scenario');
+  const themeSelect = document.getElementById('theme');
+  const widthSelect = document.getElementById('width');
+
+  Object.entries(SCENARIOS).forEach(([id, scenario]) => {
+    const option = document.createElement('option');
+    option.value = id;
+    option.textContent = id === 'minoff' ? 'waiting: minimum off' : id;
+    scenarioSelect.append(option);
+  });
+
+  function render() {
+    const scenario = SCENARIOS[scenarioSelect.value] ?? SCENARIOS.heating;
+    document.body.dataset.theme = themeSelect.value;
+    stage.dataset.theme = themeSelect.value;
+    // Explicit pixels: the demo only ever runs at one viewport per screenshot.
+    const stageWidth = Math.min(window.innerWidth - 32, Number(widthSelect.value));
+    stage.style.width = `${stageWidth}px`;
+
+    host.replaceChildren();
+
+    if (scenario.missing) {
+      const card = document.createElement('heating-controller-card');
+      card.setConfig({});
+      card.hass = makeHass({ boiler: null, rooms: [] });
+      host.append(card);
+      return;
+    }
+
+    const card = document.createElement('heating-controller-card');
+    card.setConfig({});
+    card.hass = makeHass(scenario);
+    host.append(card);
+  }
+
+  const params = new URLSearchParams(location.search);
+  if (params.get('state') && SCENARIOS[params.get('state')]) {
+    scenarioSelect.value = params.get('state');
+  }
+  if (params.get('theme')) themeSelect.value = params.get('theme');
+  if (params.get('width')) widthSelect.value = params.get('width');
+
+  scenarioSelect.addEventListener('change', render);
+  themeSelect.addEventListener('change', render);
+  widthSelect.addEventListener('change', render);
+
+  render();
+</script>
+</body>
+</html>
