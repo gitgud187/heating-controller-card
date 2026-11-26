@@ -37,6 +37,13 @@ describe('HeatingControllerCard', () => {
     expect(text).toContain('Heating');
   });
 
+  it('says Closed when the valve reports only its state', async () => {
+    const card = mount();
+    await card.updateComplete;
+
+    expect(card.shadowRoot?.textContent).toContain('Closed');
+  });
+
   it('says so when the integration is not there', async () => {
     const card = mount({ boiler: null });
     await card.updateComplete;

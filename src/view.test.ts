@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { makeHass } from './testing/fixtures';
+import { entityId, makeHass } from './testing/fixtures';
 import { buildView } from './view';
 
 const LABELS = {
@@ -78,6 +78,7 @@ describe('buildView', () => {
       target: 21,
       valvePosition: 62,
       valveOpen: true,
+      valveKnown: true,
       overheating: false,
       problem: false,
     });
@@ -121,6 +122,15 @@ describe('buildView', () => {
     expect(room?.name).toBe('Bedroom');
     expect(room?.status).toBe('unavailable');
     expect(room?.problem).toBe(false);
+  });
+
+  it('knows when a room has no valve sensor', () => {
+    const hass = makeHass({ rooms: [{ id: 'bedroom', name: 'Bedroom', status: 'served' }] });
+    const valveId = entityId('bedroom', 'binary_sensor:valve_open');
+    delete hass.entities[valveId];
+    delete hass.states[valveId];
+
+    expect(buildView(hass, {})?.rooms[0]?.valveKnown).toBe(false);
   });
 
   it('returns nothing without a controller', () => {

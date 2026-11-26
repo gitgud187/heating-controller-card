@@ -45,6 +45,8 @@ export interface Room {
   target?: number;
   valvePosition?: number;
   valveOpen: boolean;
+  /** False when the room has no valve sensor, so the card says nothing rather than "Closed". */
+  valveKnown: boolean;
   overheating: boolean;
   problem: boolean;
 }
@@ -116,6 +118,7 @@ function roomOf(hass: HomeAssistant, room: Controller['rooms'][number]): Room {
   const target = attributeNumber(hass, statusId, 'target_temperature');
   const valvePosition = attributeNumber(hass, statusId, 'valve_position');
   const status = statusObj?.state;
+  const valveObj = stateOf(hass, room.entities.valveOpen);
   const overheating = stateOf(hass, room.entities.overheating)?.state === 'on';
 
   return {
@@ -128,7 +131,8 @@ function roomOf(hass: HomeAssistant, room: Controller['rooms'][number]): Room {
     current,
     target,
     valvePosition,
-    valveOpen: stateOf(hass, room.entities.valveOpen)?.state === 'on',
+    valveOpen: valveObj?.state === 'on',
+    valveKnown: valveObj !== undefined,
     overheating,
     problem: status !== undefined && PROBLEM_STATUSES.has(status),
   };

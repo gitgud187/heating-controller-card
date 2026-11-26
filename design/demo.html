@@ -169,10 +169,13 @@
       reason: scenario.reason?.code ?? 'running_load',
       message: scenario.reason?.message ?? 'running: load 7.2 ≥ 1.5 m²·K',
     });
-    add('controller', 'sensor:load', scenario.load ?? 0, {
-      start_load_m2k: 4,
-      stop_load_m2k: 1.5,
-    });
+    add(
+      'controller',
+      'sensor:load',
+      scenario.load ?? 0,
+      // An older integration has no thresholds on the load sensor.
+      scenario.noThresholds === true ? {} : { start_load_m2k: 4, stop_load_m2k: 1.5 },
+    );
     if (scenario.output != null) {
       add('controller', 'sensor:modulation', scenario.output);
       add('controller', 'sensor:base', scenario.base ?? 48);
@@ -320,6 +323,25 @@
         { ...ROOMS.bedroom, status: 'satisfied', share: 0, current: 19.3, target: 19 },
         { ...ROOMS.kids, status: 'satisfied', share: 0, current: 20.9, target: 20.8 },
         { ...ROOMS.study, status: 'window_open', share: 0, current: 21.1 },
+      ],
+    },
+    // What the card looks like before the integration exposes its attributes.
+    bare: {
+      boiler: 'on',
+      load: 11.2,
+      output: 78,
+      base: 53.5,
+      p: 16.4,
+      i: 7.6,
+      run: 63,
+      starts: 0,
+      noThresholds: true,
+      reason: { code: 'running_load', message: 'running: load 11.2 ≥ 1.5 m²·K' },
+      rooms: [
+        { id: 'bathroom', name: 'Bathroom', status: 'served', share: 7.4, error: 1.6, open: true },
+        { id: 'bedroom', name: 'Bedroom', status: 'satisfied', share: 0 },
+        { id: 'kitchen', name: 'Kitchen', status: 'served', share: 3.8, error: 0.7, open: true },
+        { id: 'livingroom', name: 'Living Room', status: 'satisfied', share: 0 },
       ],
     },
     norooms: {

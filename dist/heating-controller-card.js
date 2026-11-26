@@ -803,6 +803,7 @@ function roomOf(hass, room) {
 	const target = attributeNumber(hass, statusId, "target_temperature");
 	const valvePosition = attributeNumber(hass, statusId, "valve_position");
 	const status = statusObj?.state;
+	const valveObj = stateOf(hass, room.entities.valveOpen);
 	const overheating = stateOf(hass, room.entities.overheating)?.state === "on";
 	return {
 		id: room.id,
@@ -814,7 +815,8 @@ function roomOf(hass, room) {
 		current,
 		target,
 		valvePosition,
-		valveOpen: stateOf(hass, room.entities.valveOpen)?.state === "on",
+		valveOpen: valveObj?.state === "on",
+		valveKnown: valveObj !== void 0,
 		overheating,
 		problem: status !== void 0 && PROBLEM_STATUSES.has(status)
 	};
@@ -1599,7 +1601,7 @@ var HeatingControllerCard = class extends i {
       </div>`;
 		const scale = Math.max(8, Math.ceil(load * 1.1));
 		const width = Math.min(100, Math.max(0, load / scale * 100));
-		const tone = startLoad !== void 0 && load >= startLoad ? "high" : stopLoad !== void 0 && load >= stopLoad ? "low" : "none";
+		const tone = startLoad !== void 0 || stopLoad !== void 0 ? startLoad !== void 0 && load >= startLoad ? "high" : stopLoad !== void 0 && load >= stopLoad ? "low" : "none" : view.boiler.heating ? "high" : "none";
 		const position = (value) => Math.min(100, Math.max(0, value / scale * 100));
 		const stop = stopLoad === void 0 ? void 0 : position(stopLoad);
 		const start = startLoad === void 0 ? void 0 : position(startLoad);
@@ -1727,8 +1729,8 @@ var HeatingControllerCard = class extends i {
 	}
 	_valve(room) {
 		if (room.valvePosition !== void 0) return `${Math.round(room.valvePosition)} %`;
-		if (room.valveOpen) return "Open";
-		return "";
+		if (!room.valveKnown) return "";
+		return room.valveOpen ? "Open" : "Closed";
 	}
 	_problems(view) {
 		if (view.problems.length === 0) return A;

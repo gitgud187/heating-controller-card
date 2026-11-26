@@ -754,12 +754,17 @@ export class HeatingControllerCard extends LitElement {
 
     const scale = Math.max(8, Math.ceil(load * 1.1));
     const width = Math.min(100, Math.max(0, (load / scale) * 100));
-    const tone =
-      startLoad !== undefined && load >= startLoad
+    const thresholdsKnown = startLoad !== undefined || stopLoad !== undefined;
+    const tone = thresholdsKnown
+      ? startLoad !== undefined && load >= startLoad
         ? 'high'
         : stopLoad !== undefined && load >= stopLoad
           ? 'low'
-          : 'none';
+          : 'none'
+      : // Without thresholds, the boiler state is the only hint whether this load is enough.
+        view.boiler.heating
+        ? 'high'
+        : 'none';
 
     const position = (value: number): number => Math.min(100, Math.max(0, (value / scale) * 100));
     const stop = stopLoad === undefined ? undefined : position(stopLoad);
@@ -932,10 +937,10 @@ export class HeatingControllerCard extends LitElement {
     if (room.valvePosition !== undefined) {
       return `${Math.round(room.valvePosition)} %`;
     }
-    if (room.valveOpen) {
-      return 'Open';
+    if (!room.valveKnown) {
+      return '';
     }
-    return '';
+    return room.valveOpen ? 'Open' : 'Closed';
   }
 
   private _problems(view: CardView): TemplateResult | typeof nothing {
