@@ -755,7 +755,6 @@ function iconPath(name) {
 /** Statuses that need a human; a window left open or a thermostat turned off are not. */
 var PROBLEM_STATUSES = /* @__PURE__ */ new Set([
 	"blocked",
-	"valve_unhealthy",
 	"valve_data_missing",
 	"wall_invalid",
 	"thermostat_invalid"
@@ -915,9 +914,9 @@ var ROOM_STATUS = {
 		icon: "help-circle",
 		color: "red"
 	},
-	valve_unhealthy: {
-		icon: "wrench",
-		color: "red"
+	valve_settled: {
+		icon: "valve-closed",
+		color: "grey"
 	}
 };
 var BOILER_STATE = {
@@ -948,6 +947,7 @@ var REASON_COLORS = {
 	start_starvation: "green",
 	running_load: "orange",
 	running_min_on: "orange",
+	running_excluded_hold: "amber",
 	waiting_load: "grey",
 	idle: "grey",
 	stop_load: "grey",

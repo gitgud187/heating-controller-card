@@ -67,7 +67,6 @@ export interface CardView {
 /** Statuses that need a human; a window left open or a thermostat turned off are not. */
 const PROBLEM_STATUSES = new Set([
   'blocked',
-  'valve_unhealthy',
   'valve_data_missing',
   'wall_invalid',
   'thermostat_invalid',

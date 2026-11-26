@@ -11,7 +11,8 @@ const LABELS = {
   served: 'Heating',
   satisfied: 'Satisfied',
   blocked: 'Blocked',
-  valve_unhealthy: 'Valve misconfigured',
+  valve_data_missing: 'Valve unavailable',
+  valve_settled: 'Valve settled below target',
 };
 
 describe('buildView', () => {
@@ -89,7 +90,7 @@ describe('buildView', () => {
       labels: LABELS,
       rooms: [
         { id: 'bedroom', name: 'Bedroom', status: 'blocked' },
-        { id: 'kitchen', name: 'Kitchen', status: 'valve_unhealthy' },
+        { id: 'kitchen', name: 'Kitchen', status: 'valve_data_missing' },
         { id: 'living', name: 'Living', status: 'satisfied', overheating: true },
         { id: 'hall', name: 'Hall', status: 'window_open' },
       ],
@@ -101,9 +102,22 @@ describe('buildView', () => {
     expect(view?.rooms.map((room) => room.problem)).toEqual([true, false, true, false]);
     expect(view?.problems.map((problem) => problem.title)).toEqual([
       'Bedroom: Blocked',
-      'Kitchen: Valve misconfigured',
+      'Kitchen: Valve unavailable',
       'Living: Overheating',
     ]);
+  });
+
+  it('does not report a valve that settled near the target', () => {
+    const hass = makeHass({
+      labels: LABELS,
+      rooms: [{ id: 'bedroom', name: 'Bedroom', status: 'valve_settled', errorK: 0.3 }],
+    });
+
+    const view = buildView(hass, {});
+
+    expect(view?.rooms[0]?.problem).toBe(false);
+    expect(view?.rooms[0]?.label).toBe('Valve settled below target');
+    expect(view?.problems).toEqual([]);
   });
 
   it('reports an unavailable boiler as a problem', () => {

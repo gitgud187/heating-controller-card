@@ -50,7 +50,8 @@ const ROOM_STATUS: Record<string, { icon: string; color: ColorName }> = {
   wall_invalid: { icon: 'alert-circle', color: 'red' },
   thermostat_invalid: { icon: 'alert-circle', color: 'red' },
   valve_data_missing: { icon: 'help-circle', color: 'red' },
-  valve_unhealthy: { icon: 'wrench', color: 'red' },
+  // The valve closed on its own near the target: the room is not a problem.
+  valve_settled: { icon: 'valve-closed', color: 'grey' },
 };
 
 const BOILER_STATE: Record<string, { icon: string; color: ColorName }> = {
@@ -67,6 +68,7 @@ const REASON_COLORS: Record<string, ColorName> = {
   start_starvation: 'green',
   running_load: 'orange',
   running_min_on: 'orange',
+  running_excluded_hold: 'amber',
   waiting_load: 'grey',
   idle: 'grey',
   stop_load: 'grey',
