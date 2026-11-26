@@ -11,9 +11,6 @@ export default defineConfig({
       formats: ['es'],
       fileName: () => 'heating-controller-card.js',
     },
-    rollupOptions: {
-      output: { inlineDynamicImports: true },
-    },
     // The bundle is committed and CI fails when it differs from the source, so keep the
     // output readable: a diff then shows what actually changed.
     minify: false,
